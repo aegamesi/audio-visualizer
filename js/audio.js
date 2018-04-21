@@ -21,7 +21,7 @@ $(document).ready(function() {
         audio: audio,
         canvas: canvas,
         fftSize: 2048 * 2,
-        smoothingTimeConstant: 0.5,
+        smoothingTimeConstant: 0.0,
 
         minDecibels: -100,
         maxDecibels: -30,
@@ -33,7 +33,10 @@ $(document).ready(function() {
         gaussianSigma: 1,
         sharpening: 6,
     });
-    visualizer.init();
+
+    navigator.getUserMedia({audio:true}, function(stream) {
+        visualizer.init(stream);
+    }, function() {});
 
     audio.onplay = function() {
         visualizer.render();
@@ -58,19 +61,21 @@ var Visualizer = function(config) {
     this.kernel = this.gaussianKernel(config.gaussianRadius, config.gaussianSigma);
 };
 Visualizer.prototype = {
-    init: function() {
+    init: function(stream) {
         window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
         window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
         window.cancelAnimationFrame = window.cancelAnimationFrame || window.webkitCancelAnimationFrame || window.mozCancelAnimationFrame || window.msCancelAnimationFrame;
 
         // setup audio analysis
         this.audioContext = new AudioContext();
-        var input = this.audioContext.createMediaElementSource(this.audio);
+        // var input = this.audioContext.createMediaElementSource(this.audio);
+        var input = this.audioContext.createMediaStreamSource(stream);
         this.analyser = this.audioContext.createAnalyser();
         this.analyser.smoothingTimeConstant = this.config.smoothingTimeConstant;
         this.analyser.fftSize = this.config.fftSize;
         input.connect(this.analyser);
-        input.connect(this.audioContext.destination);
+        // input.connect(this.audioContext.destination);
+        this.render();
     },
     gaussianKernel: function(radius, sigma) {
         var gaussianDistribution = function(d) {
