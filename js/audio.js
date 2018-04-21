@@ -21,7 +21,10 @@ $(document).ready(function() {
         audio: audio,
         canvas: canvas,
         fftSize: 2048 * 2,
-        smoothingTimeConstant: 0.1,
+        smoothingTimeConstant: 0.5,
+
+        minDecibels: -100,
+        maxDecibels: -30,
 
         barGap: 1,
         barWidth: 2,
@@ -100,8 +103,14 @@ Visualizer.prototype = {
         var ctx = this.canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        var array = new Uint8Array(this.analyser.frequencyBinCount);
-        this.analyser.getByteFrequencyData(array);
+        var array = new Float32Array(this.analyser.frequencyBinCount);
+        this.analyser.getFloatFrequencyData(array);
+        for (var i = 0; i < array.length; i++) {
+            array[i] = (array[i] - this.config.minDecibels) / (this.config.maxDecibels - this.config.minDecibels);
+            if (array[i] < 0) {
+                array[i] = 0.0;
+            }
+        }
 
         // resample and lerp
         var barCount = canvas.width / (this.config.barWidth + this.config.barGap);
@@ -118,7 +127,7 @@ Visualizer.prototype = {
             var value = (index - indexLo) * valueHi + (indexHi - index) * valueLo;
 
             // Sharpening
-            value = Math.pow(value / 255.0, this.config.sharpening) * 255.0;
+            value = Math.pow(value, this.config.sharpening);
 
             bars[i] = value;
         }
@@ -142,7 +151,7 @@ Visualizer.prototype = {
             var value = bars[i];
 
             ctx.fillStyle = 'white';
-            ctx.fillRect(i * barInterval, canvas.height - value, this.config.barWidth, canvas.height);
+            ctx.fillRect(i * barInterval, canvas.height * (1.0 - value), this.config.barWidth, canvas.height);
         }
 
         this.animationID = requestAnimationFrame(this.render.bind(this));
