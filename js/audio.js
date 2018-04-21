@@ -8,9 +8,8 @@ $(document).ready(function() {
     var audioInput = $("#audio-file");
     audioInput.on("change", function(e) {
         audio.pause();
-        // window.cancelAnimationFrame(animationID);
 
-        //see http://lostechies.com/derickbailey/2013/09/23/getting-audio-file-information-with-htmls-file-api-and-audio-element/
+        // see http://lostechies.com/derickbailey/2013/09/23/getting-audio-file-information-with-htmls-file-api-and-audio-element/
         var file = e.currentTarget.files[0];
         var objectUrl = URL.createObjectURL(file);
         audio.src = objectUrl;
@@ -69,7 +68,7 @@ Visualizer.prototype = {
         var base = opt_base || 2;
         var logmax = this.logBase(total + 1, base);
         var exp = logmax * index / total;
-        return Math.round(Math.pow(base, exp) - 1);
+        return Math.pow(base, exp) - 1;
     },
     stop: function() {
         window.cancelAnimationFrame(this.animationID);
@@ -84,9 +83,15 @@ Visualizer.prototype = {
         var barCount = canvas.width / (this.config.barWidth + this.config.barGap);
         var barInterval = this.config.barWidth + this.config.barGap;
         for (var i = 0; i < barCount; i++) {
+            // Linear interpolation
             var index = this.logScale((i * array.length) / barCount, array.length);
-            // index = i * step;
-            var value = array[index];
+            var indexLo = Math.floor(index);
+            var indexHi = Math.ceil(index);
+            var valueLo = array[indexLo];
+            var valueHi = array[indexHi];
+            var value = (index - indexLo) * valueHi + (indexHi - index) * valueLo;
+
+
             /*for (var j = -3; j < 3; j++) {
                 var j2 = j + index;
                 if (j2 >= 0 && j2 < array.length) {
