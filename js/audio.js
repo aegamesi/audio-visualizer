@@ -20,11 +20,15 @@ $(document).ready(function() {
     var visualizer = new Visualizer({
         audio: audio,
         canvas: canvas,
-        fftSize: 8192,
-        smoothingTimeConstant: 0,
+        fftSize: 2048 * 2,
+        smoothingTimeConstant: 0.1,
 
         barGap: 1,
         barWidth: 2,
+
+        gaussianRadius: 2,
+        gaussianSigma: 1,
+        sharpening: 4,
     });
     visualizer.init();
 
@@ -45,21 +49,40 @@ var Visualizer = function(config) {
     this.canvas = config.canvas;
     this.animationId = null;
     this.analyser = null;
+
+    this.kernel = this.gaussianKernel(config.gaussianRadius, config.gaussianSigma);
 };
 Visualizer.prototype = {
     init: function() {
         window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.msAudioContext;
         window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
         window.cancelAnimationFrame = window.cancelAnimationFrame || window.webkitCancelAnimationFrame || window.mozCancelAnimationFrame || window.msCancelAnimationFrame;
-        this.audioContext = new AudioContext();
 
+        // setup audio analysis
+        this.audioContext = new AudioContext();
         var input = this.audioContext.createMediaElementSource(this.audio);
         this.analyser = this.audioContext.createAnalyser();
         this.analyser.smoothingTimeConstant = this.config.smoothingTimeConstant;
         this.analyser.fftSize = this.config.fftSize;
-
         input.connect(this.analyser);
         input.connect(this.audioContext.destination);
+    },
+    gaussianKernel: function(radius, sigma) {
+        var gaussianDistribution = function(d) {
+            var n = 1.0 / (Math.sqrt(2 * Math.PI) * sigma);
+            return Math.exp(-d*d/(2 * sigma * sigma)) * n;
+        };
+        var width = (radius * 2) + 1;
+        var kernel = new Array(width);
+        var sum = 0.0;
+        for (var i = 0; i < width; i++) {
+            kernel[i] = gaussianDistribution(i - radius);
+            sum += kernel[i];
+        }
+        for (var i = 0; i < width; i++) {
+            kernel[i] = kernel[i] / sum;
+        }
+        return kernel;
     },
     logBase: function(val, base) {
         return Math.log(val) / Math.log(base);
@@ -80,28 +103,43 @@ Visualizer.prototype = {
         var array = new Uint8Array(this.analyser.frequencyBinCount);
         this.analyser.getByteFrequencyData(array);
 
+        // resample and lerp
         var barCount = canvas.width / (this.config.barWidth + this.config.barGap);
         var barInterval = this.config.barWidth + this.config.barGap;
+        var bars = new Array(barCount);
         for (var i = 0; i < barCount; i++) {
             // Linear interpolation
             var index = this.logScale((i * array.length) / barCount, array.length);
+            // var index = (i / barCount) * array.length;
             var indexLo = Math.floor(index);
             var indexHi = Math.ceil(index);
             var valueLo = array[indexLo];
             var valueHi = array[indexHi];
             var value = (index - indexLo) * valueHi + (indexHi - index) * valueLo;
 
+            // Sharpening
+            value = Math.pow(value / 255.0, this.config.sharpening) * 255.0;
 
-            /*for (var j = -3; j < 3; j++) {
-                var j2 = j + index;
-                if (j2 >= 0 && j2 < array.length) {
-                    value += kernel[j + 3] * array[j2];
+            bars[i] = value;
+        }
+
+
+        // smoothing
+        var bars2 = new Array(bars.length);
+        for (var i = 0; i < bars.length; i++) {
+            bars2[i] = 0.0;
+            for (var j = -this.config.gaussianRadius; j<= this.config.gaussianRadius; j++) {
+                var ind = i + j;
+                if (ind >= 0 && ind < bars.length) {
+                    bars2[i] += this.kernel[j + this.config.gaussianRadius] * bars[ind];
                 }
-            }*/
-            //value = array[(((i*step) / array.length) ** (1 / 2.0)) * array.length];
+            }
+        }
+        bars = bars2;
 
-            var sharpening = 4.0;
-            value = Math.pow(value, sharpening) / Math.pow(256.0, sharpening - 1.0);
+        // draw
+        for (var i = 0; i < barCount; i++) {
+            var value = bars[i];
 
             ctx.fillStyle = 'white';
             ctx.fillRect(i * barInterval, canvas.height - value, this.config.barWidth, canvas.height);
