@@ -41,11 +41,13 @@ $(document).ready(function() {
     audio.onpause = function() {
         visualizer.stop();
     };
+
+    canvas.width = window.innerWidth;
+    $(window).resize(function() {
+        canvas.width = window.innerWidth;
+    });
 });
 
-window.onload = function() {
-    // new Visualizer().ini();
-};
 var Visualizer = function(config) {
     this.config = config;
     this.audio = config.audio;
@@ -113,7 +115,7 @@ Visualizer.prototype = {
         }
 
         // resample and lerp
-        var barCount = canvas.width / (this.config.barWidth + this.config.barGap);
+        var barCount = Math.floor(canvas.width / (this.config.barWidth + this.config.barGap));
         var barInterval = this.config.barWidth + this.config.barGap;
         var bars = new Array(barCount);
         var f_start = 0;
@@ -139,10 +141,13 @@ Visualizer.prototype = {
             for (j = 0; j < f_width; j++) {
                 var p = array[f_start + j];
 
-                if (p > value) {
+                value += p;
+
+                /*if (p > value) {
                     value = p;
-                }
+                }*/
             }
+            value /= f_width;
         
 
             // Sharpening
