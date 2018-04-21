@@ -31,7 +31,7 @@ $(document).ready(function() {
 
         gaussianRadius: 2,
         gaussianSigma: 1,
-        sharpening: 4,
+        sharpening: 6,
     });
     visualizer.init();
 
@@ -116,20 +116,40 @@ Visualizer.prototype = {
         var barCount = canvas.width / (this.config.barWidth + this.config.barGap);
         var barInterval = this.config.barWidth + this.config.barGap;
         var bars = new Array(barCount);
+        var f_start = 0;
         for (var i = 0; i < barCount; i++) {
             // Linear interpolation
-            var index = this.logScale((i * array.length) / barCount, array.length);
-            // var index = (i / barCount) * array.length;
-            var indexLo = Math.floor(index);
-            var indexHi = Math.ceil(index);
-            var valueLo = array[indexLo];
-            var valueHi = array[indexHi];
-            var value = (index - indexLo) * valueHi + (indexHi - index) * valueLo;
+            //var index = this.logScale((i * array.length) / barCount, array.length); // log scale
+            // var index = (i / barCount) * array.length; // linear
+            // var index = (i / barCount) * (array.length / 6.0);
+
+            // var f_end = Math.round(Math.pow((i + 1) / barCount, 2.0) * array.length);
+            // var f_end = Math.round(this.logScale((i * array.length) / barCount, array.length));
+            var f_end = Math.round((i / barCount) * array.length / 8.0);
+            if (f_end > array.length - 1) {
+                f_end = array.length - 1;
+            }
+            
+            var f_width = f_end - f_start;
+            if (f_width <= 0) {
+                f_width = 1;
+            }
+
+            var value = 0.0;
+            for (j = 0; j < f_width; j++) {
+                var p = array[f_start + j];
+
+                if (p > value) {
+                    value = p;
+                }
+            }
+        
 
             // Sharpening
             value = Math.pow(value, this.config.sharpening);
 
             bars[i] = value;
+            f_start = f_end;
         }
 
 
@@ -148,7 +168,7 @@ Visualizer.prototype = {
 
         // draw
         for (var i = 0; i < barCount; i++) {
-            var value = bars[i];
+            var value = bars[i] * 0.5;
 
             ctx.fillStyle = 'white';
             ctx.fillRect(i * barInterval, canvas.height * (1.0 - value), this.config.barWidth, canvas.height);
