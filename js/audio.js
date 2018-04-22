@@ -20,8 +20,8 @@ $(document).ready(function() {
     var visualizer = new Visualizer({
         audio: audio,
         canvas: canvas,
-        fftSize: 2048 * 2,
-        smoothingTimeConstant: 0.5,
+        fftSize: 2048 * 4,
+        smoothingTimeConstant: 0.0,
 
         minDecibels: -100,
         maxDecibels: -30,
@@ -127,7 +127,7 @@ Visualizer.prototype = {
 
             // var f_end = Math.round(Math.pow((i + 1) / barCount, 2.0) * array.length);
             // var f_end = Math.round(this.logScale((i * array.length) / barCount, array.length));
-            var f_end = Math.round((i / barCount) * array.length / 8.0);
+            var f_end = Math.round((i / barCount) * array.length / 10.0);
             if (f_end > array.length - 1) {
                 f_end = array.length - 1;
             }
