@@ -8,6 +8,7 @@ $(document).ready(function() {
     var audioInput = $("#audio-file");
     audioInput.on("change", function(e) {
         audio.pause();
+        visualizer.audioContext.resume();
 
         // see http://lostechies.com/derickbailey/2013/09/23/getting-audio-file-information-with-htmls-file-api-and-audio-element/
         var file = e.currentTarget.files[0];
